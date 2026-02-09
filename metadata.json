@@ -1,0 +1,5 @@
+{
+  "name": "VNStock Quant Screener",
+  "description": "A professional Fintech MVP for screening Vietnamese stocks (HOSE, HNX, UPCOM) based on FA and TA criteria. Features real-time tracking, dark mode visualization, and automated filtering.",
+  "requestFramePermissions": []
+}
