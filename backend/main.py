@@ -156,8 +156,7 @@ def get_exchange(ticker: str) -> str:
 def fetch_real_price_board(tickers: List[str]) -> List[Dict]:
     """Fetch real-time price data with historical fallback if price_board fails"""
     if not VNSTOCK_AVAILABLE:
-        print("vnstock not available, using mock data")
-        return generate_mock_prices(tickers)
+        return []
     
     try:
         # Workaround: price_board is currently broken in legacy vnstock (KeyError: 'data')
@@ -213,19 +212,18 @@ def fetch_real_price_board(tickers: List[str]) -> List[Dict]:
         if results:
             print(f"✅ Successfully fetched data using historical fallback for {len(results)} stocks")
             return results
-        else:
-            return generate_mock_prices(tickers)
+        return results
             
     except Exception as e:
         print(f"❌ Error in fetch_real_price_board: {e}")
         traceback.print_exc()
-        return generate_mock_prices(tickers)
+        return []
 
 
 def fetch_stock_history(ticker: str, days: int = 30) -> List[Dict]:
     """Fetch historical price data for a stock"""
     if not VNSTOCK_AVAILABLE:
-        return generate_mock_history()
+        return []
     
     try:
         end_date = datetime.now()
@@ -240,7 +238,7 @@ def fetch_stock_history(ticker: str, days: int = 30) -> List[Dict]:
         )
         
         if df is None or df.empty:
-            return generate_mock_history()
+            return []
         
         result = []
         for _, row in df.iterrows():
@@ -257,92 +255,19 @@ def fetch_stock_history(ticker: str, days: int = 30) -> List[Dict]:
         
     except Exception as e:
         print(f"Error fetching history for {ticker}: {e}")
-        return generate_mock_history()
+        return []
 
 
-def generate_mock_prices(tickers: List[str]) -> List[Dict]:
-    """Generate realistic mock price data"""
-    import random
-    
-    # More accurate base prices (approximate real prices in VND)
-    base_prices = {
-        'VCB': 92000, 'BID': 45000, 'CTG': 35000, 'TCB': 24000, 'VPB': 19000,
-        'ACB': 25000, 'MBB': 19500, 'HDB': 20000, 'STB': 30000, 'TPB': 18000,
-        'VIB': 22000, 'VHM': 42000, 'VIC': 43000, 'VRE': 25000, 'HPG': 24000,
-        'FPT': 136000, 'VNM': 68000, 'GAS': 82000, 'MWG': 60000, 'MSN': 72000,
-        'SAB': 58000, 'SSI': 32000, 'POW': 12000, 'PLX': 42000, 'VJC': 97000,
-        'BCM': 65000, 'GVR': 28000, 'PDR': 24000, 'NVL': 14000, 'DGC': 96000,
-        'VHC': 72000, 'FRT': 135000, 'PNJ': 85000, 'REE': 62000, 'GMD': 85000,
-        'DPM': 28000, 'DCM': 30000, 'PVD': 25000, 'PVS': 42000, 'KDH': 25000
-    }
-    
-    results = []
-    for ticker in tickers:
-        base = base_prices.get(ticker, 50000)
-        change_pct = random.uniform(-3, 3)
-        price = base * (1 + change_pct / 100)
-        change = price - base
-        volume = random.randint(500000, 5000000)
-        
-        results.append({
-            'ticker': ticker,
-            'exchange': get_exchange(ticker),
-            'companyName': COMPANY_NAMES.get(ticker, ticker),
-            'sector': SECTOR_MAP.get(ticker, 'Khác'),
-            'price': round(price),
-            'refPrice': base,
-            'ceilingPrice': round(base * 1.07),
-            'floorPrice': round(base * 0.93),
-            'change': round(change),
-            'changePercent': round(change_pct, 2),
-            'volume': volume,
-            'totalValue': round(volume * price / 1000000000, 2),
-            'buyVolume': int(volume * random.uniform(0.4, 0.6)),
-            'sellVolume': int(volume * random.uniform(0.4, 0.6)),
-            'foreignBuy': random.randint(10000, 200000),
-            'foreignSell': random.randint(10000, 200000),
-            'timestamp': datetime.now().isoformat()
-        })
-    
-    return results
-
-
-def generate_mock_history() -> List[Dict]:
-    """Generate mock historical data"""
-    import random
-    
-    data = []
-    price = 50000
-    
-    for i in range(30):
-        date = (datetime.now() - timedelta(days=30-i)).strftime('%Y-%m-%d')
-        change = random.uniform(-0.03, 0.03)
-        open_price = price
-        close_price = price * (1 + change)
-        high = max(open_price, close_price) * (1 + random.uniform(0, 0.02))
-        low = min(open_price, close_price) * (1 - random.uniform(0, 0.02))
-        
-        data.append({
-            'time': date,
-            'open': round(open_price),
-            'high': round(high),
-            'low': round(low),
-            'close': round(close_price),
-            'volume': random.randint(1000000, 5000000)
-        })
-        
-        price = close_price
-    
-    return data
+# Removed mock data generation functions to comply with Zero Fabrication policy.
 
 
 def fetch_market_indices() -> Dict:
     """Fetch real market indices (VNIndex, HNX, UPCOM) using vnstock"""
     if not VNSTOCK_AVAILABLE:
         return {
-            'vnindex': {'value': 1250, 'change': 1.5, 'changePercent': 0.12, 'volume': 500000000},
-            'hnxindex': {'value': 235, 'change': 0.5, 'changePercent': 0.21, 'volume': 80000000},
-            'upcomIndex': {'value': 92, 'change': 0.2, 'changePercent': 0.22, 'volume': 40000000},
+            'vnindex': {'value': 0, 'change': 0, 'changePercent': 0, 'volume': 0},
+            'hnxindex': {'value': 0, 'change': 0, 'changePercent': 0, 'volume': 0},
+            'upcomIndex': {'value': 0, 'change': 0, 'changePercent': 0, 'volume': 0},
             'timestamp': datetime.now().isoformat()
         }
     
@@ -394,7 +319,7 @@ def fetch_market_indices() -> Dict:
 def fetch_macro_data() -> Dict:
     """Fetch global macro data (Gold, DXY, US10Y)"""
     if not YFINANCE_AVAILABLE:
-        return generate_mock_macro()
+        return {}
     
     try:
         data = yf.download("GC=F DX-Y.NYB ^TNX", period="5d", interval="1d", 
@@ -414,37 +339,17 @@ def fetch_macro_data() -> Dict:
                    "rsi": 50, "trend": trend}
 
         return {
-            "gold": {**extract_asset("GC=F"), "aiPrediction": "Vàng đang ổn định."},
+            "gold": {**extract_asset("GC=F"), "aiPrediction": "Dữ liệu thời gian thực."},
             "dxy": extract_asset("DX-Y.NYB"),
             "us10y": extract_asset("^TNX"),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         print(f"Error fetching macro: {e}")
-        return generate_mock_macro()
+        return {}
 
 
-def generate_mock_macro() -> Dict:
-    import random
-    
-    return {
-        "gold": {
-            "price": round(2035 + random.uniform(-20, 30), 2),
-            "change": round(random.uniform(-1, 1.5), 2),
-            "rsi": round(random.uniform(40, 60), 1),
-            "trend": "UP" if random.random() > 0.5 else "DOWN",
-            "aiPrediction": "Vàng đang trong xu hướng tích lũy."
-        },
-        "dxy": {
-            "price": round(102.5 + random.uniform(-1, 1), 2),
-            "change": round(random.uniform(-0.5, 0.8), 2),
-        },
-        "us10y": {
-            "price": round(4.15 + random.uniform(-0.1, 0.15), 2),
-            "change": round(random.uniform(-2, 3), 2),
-        },
-        "timestamp": datetime.now().isoformat()
-    }
+# Removed mock macro function.
 
 
 # --- REST API ENDPOINTS ---
@@ -559,53 +464,24 @@ async def get_available_tickers():
 # Legacy endpoint for compatibility with old frontend
 @app.post("/api/screen")
 async def smart_screener(criteria: dict = None):
-    """Legacy screener endpoint - returns price board data with analysis"""
+    """Legacy screener endpoint - returns real price data only"""
     data = fetch_real_price_board(MAJOR_TICKERS)
     
     results = []
     for item in data:
-        # Calculate hybrid score based on price movement
-        roe = 15 + np.random.uniform(-5, 10)
-        pe = 12 + np.random.uniform(-3, 8)
-        rsi = 50 + np.random.uniform(-20, 20)
-        rs_rating = int(50 + np.random.uniform(0, 45))
-        
-        hybrid_score = int(50 + np.random.uniform(0, 45))
-        if item['changePercent'] > 2:
-            hybrid_score = min(100, hybrid_score + 20)
-        elif item['changePercent'] < -2:
-            hybrid_score = max(0, hybrid_score - 20)
-        
         results.append({
             "ticker": item['ticker'],
             "exchange": item['exchange'],
             "price": item['price'],
             "change_percent": item['changePercent'],
             "volume": item['volume'],
-            "roe": roe,
-            "pe": pe,
-            "rsi": rsi,
-            "ma50": item['price'] * 0.98,
-            "rs_rating": rs_rating,
-            "hybrid_score": hybrid_score,
-            "vsa_signal": "High Demand" if item['volume'] > 2000000 else "None",
-            "volatility_squeeze": False,
-            "sentiment_score": int(50 + np.random.uniform(-10, 30)),
-            "financial_raw": {
-                "market_cap": 50000,
-                "equity": 20000,
-                "profit_after_tax": 5000,
-                "eps": 2500,
-                "debt": 10000
-            },
-            "score_breakdown": {
-                "technical": int(np.random.uniform(15, 35)),
-                "fundamental": int(np.random.uniform(20, 55)),
-                "sentiment": int(np.random.uniform(40, 80))
-            },
+            "roe": 0, # To be fetched from real FA if needed
+            "pe": 0,
+            "rsi": 0,
+            "hybrid_score": 0,
             "ai_insight": {
-                "summary": f"Mã {item['ticker']} đang giao dịch với giá {item['price']:,} VND, thay đổi {item['changePercent']:+.2f}%.",
-                "signal": "BUY" if item['changePercent'] > 1 else "WAIT" if item['changePercent'] > -1 else "SELL"
+                "summary": f"Mã {item['ticker']} đang giao dịch với giá {item['price']:,} VND.",
+                "signal": "WAIT"
             }
         })
     

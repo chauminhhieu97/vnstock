@@ -1,451 +1,344 @@
 import os
 import tempfile
-
-# Fix matplotlib config dir issue in read-only environments
-os.environ['MPLCONFIGDIR'] = tempfile.mkdtemp()
-
+import pandas as pd
+import numpy as np
+import mplfinance as mpf
 import matplotlib
 # Force Agg backend for headless/thread-safe plotting
 matplotlib.use('Agg')
 
-import pandas as pd
-import numpy as np
-import mplfinance as mpf
-from scipy.signal import argrelextrema
-import warnings
 from datetime import datetime, timedelta
+import warnings
+
+# --- 1. DATA SOURCES & CONFIGURATION ---
 try:
     from vnstock import stock_historical_data, listing_companies, financial_ratio, financial_flow
     VNSTOCK_AVAILABLE = True
 except ImportError:
     VNSTOCK_AVAILABLE = False
-    print("Warning: vnstock not available. Script will fail to fetch data.")
+    print("❌ CRITICAL: vnstock library not found. Install it via `pip install vnstock`")
 
 warnings.filterwarnings('ignore')
 
-# --- CONFIGURATION ---
-LOOKBACK_DAYS = 365 # 1 Year
-INDUSTRY_PE_Median = 15.0 # Default fallback
+# Configuration
+LOOKBACK_DAYS = 365  # 1 Year for TA
+MIN_VOLUME_AVG = 50000  # Minimum liquidity requirement
 
-# --- 1. DATA FETCHING ---
+# --- 2. DATA FETCHING (STRICT ZERO FABRICATION) ---
 
-def fetch_all_stocks():
-    """Fetch list of all stocks on HOSE and HNX"""
+def fetch_safe_data(func, *args, **kwargs):
+    """Wrapper to safely fetch data from API and handle errors."""
     if not VNSTOCK_AVAILABLE:
-        return []
-    
+        return None
     try:
-        # Get all listing companies
-        df = listing_companies()
-        # Filter for HOSE and HNX only
-        # Correct column is 'comGroupCode'
-        df = df[df['comGroupCode'].isin(['HOSE', 'HNX'])]
-        return df['ticker'].tolist()
+        return func(*args, **kwargs)
     except Exception as e:
-        print(f"Error fetching stock list: {e}")
-        return []
-
-def fetch_financial_data(symbol):
-    """Fetch key financial metrics"""
-    if not VNSTOCK_AVAILABLE:
+        # print(f"API Error ({func.__name__}): {e}")
         return None
 
-    try:
-        # 1. Ratios (yearly for stability)
-        # Handle potential API errors or empty data gracefully
-        try:
-            df_ratio = financial_ratio(symbol, report_range='yearly', is_all=True)
-        except:
-            df_ratio = pd.DataFrame()
-            
-        # 2. Cash Flow (yearly)
-        try:
-            df_flow = financial_flow(symbol, report_type='cashflow', report_range='yearly')
-        except:
-            df_flow = pd.DataFrame()
-            
-        # 3. Income Statement (for growth)
-        try:
-            df_income = financial_flow(symbol, report_type='incomestatement', report_range='yearly')
-        except:
-            df_income = pd.DataFrame()
+def get_sector_median_pe(sector_name, all_tickers_df):
+    """
+    Calculate the median P/E of a specific sector dynamically.
+    Args:
+        sector_name: Name of the industry sector.
+        all_tickers_df: DataFrame containing ticker and sector info.
+    Returns:
+        float: Median P/E of the sector, or None if insufficient data.
+    """
+    if not VNSTOCK_AVAILABLE or all_tickers_df.empty:
+        return None
         
-        return {
-            'ratio': df_ratio,
-            'cashflow': df_flow,
-            'income': df_income
-        }
-    except:
-        return None
-
-def fetch_price_data(symbol):
-    """Fetch D1 price data for the last year"""
-    if not VNSTOCK_AVAILABLE:
-        return pd.DataFrame()
+    # Get all tickers in the same sector
+    sector_tickers = all_tickers_df[all_tickers_df['organName'] == sector_name]['ticker'].tolist()
     
+    if len(sector_tickers) < 3: # Need at least 3 peers for a meaningful median
+        return None
+        
+    pe_values = []
+    # For performance, we might limit this to a sample if the sector is huge, 
+    # but for accuracy we try to get as many as possible.
+    # To avoid API rate limits, we'll take a random sample of up to 10 peers + the target
+    sample_size = min(len(sector_tickers), 10)
+    import random
+    sampled_tickers = random.sample(sector_tickers, sample_size)
+    
+    for t in sampled_tickers:
+        try:
+            ratio = fetch_safe_data(financial_ratio, t, report_range='yearly', is_all=True)
+            if ratio is not None and not ratio.empty:
+                pe = ratio.iloc[0].get('priceToEarning', ratio.iloc[0].get('pe'))
+                if pe and pe > 0: # Filter out negative or zero P/E
+                    pe_values.append(pe)
+        except:
+            continue
+            
+    if not pe_values:
+        return None
+        
+    return np.median(pe_values)
+
+def fetch_full_financials(symbol):
+    """Fetch all necessary financial statements for scoring."""
+    ratio = fetch_safe_data(financial_ratio, symbol, report_range='yearly', is_all=True)
+    cashflow = fetch_safe_data(financial_flow, symbol, report_type='cashflow', report_range='yearly')
+    income = fetch_safe_data(financial_flow, symbol, report_type='incomestatement', report_range='yearly')
+    
+    if any(x is None or x.empty for x in [ratio, cashflow, income]):
+        return None
+        
+    return {
+        'ratio': ratio.iloc[0],
+        'cashflow': cashflow, # Need history for 2-year check
+        'income': income.iloc[0]
+    }
+
+def fetch_market_data(symbol):
+    """Fetch OHLCV data for Technical Analysis."""
     end_date = datetime.now().strftime('%Y-%m-%d')
     start_date = (datetime.now() - timedelta(days=LOOKBACK_DAYS)).strftime('%Y-%m-%d')
     
-    try:
-        df = stock_historical_data(symbol, start_date, end_date, "1D", "stock")
-        if df is None or df.empty:
-            return pd.DataFrame()
-            
-        # Standardize columns
-        df['time'] = pd.to_datetime(df['time'])
-        df = df.set_index('time')
-        df = df.rename(columns={
-            'open': 'Open', 'high': 'High', 'low': 'Low', 
-            'close': 'Close', 'volume': 'Volume'
-        })
-        return df
-    except:
-        return pd.DataFrame()
-
-# --- 2. FUNDAMENTAL ANALYSIS (THE SHIELD) ---
-
-def analyze_fundamentals(symbol):
-    """Analyze stock fundamentals based on Safety, Quality, and Growth"""
-    data = fetch_financial_data(symbol)
-    if not data or data['ratio'] is None or data['cashflow'] is None:
+    df = fetch_safe_data(stock_historical_data, symbol, start_date, end_date, "1D", "stock")
+    if df is None or df.empty or len(df) < 50:
         return None
-
-    scores = {
-        'symbol': symbol,
-        'passed': False,
-        'reason': ''
-    }
-
-def analyze_fundamentals(symbol):
-    """Analyze stock fundamentals based on Safety, Quality, and Growth"""
-    data = fetch_financial_data(symbol)
-    if not data or data['ratio'].empty:
-        return None
-
-    scores = {
-        'symbol': symbol,
-        'passed': False,
-        'reason': ''
-    }
-
-    try:
-        # Latest data points
-        # financial_ratio returns time series, get the latest year
-        latest_ratio = data['ratio'].iloc[0] 
         
-        # 1. Valuation (P/E < 0.8 * Industry Median)
-        # vnstock legacy ratio columns might be 'pe', 'pb', etc.
-        # Let's inspect available columns or use safe .get()
-        pe = latest_ratio.get('priceToEarning', latest_ratio.get('pe', 100))
-        
-        # 2. Quality of Earnings (CFO > Net Income)
-        # Need to handle if cashflow/income is empty
-        cfo = 0
-        net_income = 0
-        
-        if not data['cashflow'].empty:
-            # vnstock cashflow columns: 'investCost', 'fromInvest', 'fromFinan', 'fromOper', 'freeCashFlow'
-            # Adjust based on actual API response
-            latest_flow = data['cashflow'].iloc[0]
-            cfo = latest_flow.get('fromOper', latest_flow.get('netCashFlowFromOperatingActivities', 0))
-            
-        if not data['income'].empty:
-            latest_income = data['income'].iloc[0]
-            net_income = latest_income.get('postTaxProfit', 0)
-        
-        is_real_profit = cfo > net_income
-        
-        # 3. Growth (> 15%)
-        # rev_growth = latest_ratio.get('revenueGrowth', 0)
-        # profit_growth = latest_ratio.get('profitGrowth', 0) 
-        
-        # is_high_growth = (rev_growth > 0.15) or (profit_growth > 0.15)
-        
-        # 4. Health
-        debt = latest_ratio.get('debtOnEquity', latest_ratio.get('debtToEquity', 100))
-        roe = latest_ratio.get('roe', 0)
-        
-        # RELAXED FILTERS FOR DEMO
-        is_healthy = (debt < 2.0) and (roe > 0.10) 
-        
-        # Strict Filter -> Relaxed for demo
-        if is_healthy: 
-            scores['passed'] = True
-            scores['pe'] = pe
-            scores['roe'] = roe
-            scores['cfo_vs_ni'] = f"{cfo/1e9:.1f}B vs {net_income/1e9:.1f}B"
-            return scores
-            
-    except Exception as e:
-        # print(f"FA Error {symbol}: {e}")
-        pass
-        
-    return None
-
-# --- 3. TECHNICAL ANALYSIS (THE SPEAR) ---
-
-def calculate_indicators(df):
-    """Calculate technical indicators manually since pandas_ta failed to install"""
-    # SMA 50
-    df['SMA_50'] = df['Close'].rolling(window=50).mean()
-    # EMA 200
-    df['EMA_200'] = df['Close'].ewm(span=200, adjust=False).mean()
-    # RSI
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    df['RSI'] = 100 - (100 / (1 + rs))
-    
+    df['time'] = pd.to_datetime(df['time'])
+    df = df.set_index('time')
+    df = df.rename(columns={
+        'open': 'Open', 'high': 'High', 'low': 'Low', 
+        'close': 'Close', 'volume': 'Volume'
+    })
     return df
 
-def detect_wyckoff_spring(df):
+# --- 3. SCORING LOGIC (THE ALGORITHM) ---
+
+def calculate_stock_score(symbol, sector_info_df):
     """
-    Wyckoff Spring: 
-    1. Low < Support (Lowest Low of last 20-40 days)
-    2. Close > Support
-    3. Volume > 1.1 * AvgVolume (Relaxed)
+    Calculate the 100-point score for a stock.
+    Returns: Dict containing score breakdown and recommendation.
     """
-    if len(df) < 50: return False, None
+    # 1. Fetch Data
+    fin = fetch_full_financials(symbol)
+    df = fetch_market_data(symbol)
     
-    current = df.iloc[-1]
-    
-    # Define Support as Lowest Low of previous 20-40 days (excluding last 2 days)
-    window_data = df.iloc[-40:-2] 
-    support_level = window_data['Low'].min()
-    
-    # Condition 1 & 2
-    is_spring_price = (current['Low'] < support_level) and (current['Close'] > support_level)
-    
-    # Condition 3: Volume (Relaxed to 1.1x)
-    avg_vol = df['Volume'].iloc[-21:-1].mean()
-    is_volume_spike = current['Volume'] > (1.1 * avg_vol)
-    
-    if is_spring_price and is_volume_spike:
-        return True, support_level
+    if not fin or df is None:
+        return None
         
-    return False, None
+    # --- PART A: FUNDAMENTAL ANALYSIS (40 Points) ---
+    score_fa = 0
+    fa_notes = []
+    
+    # 1. Valuation (10 pts)
+    # Get Sector Median P/E
+    ticker_info = sector_info_df[sector_info_df['ticker'] == symbol]
+    if not ticker_info.empty:
+        sector_name = ticker_info.iloc[0]['organName']
+        sector_median_pe = get_sector_median_pe(sector_name, sector_info_df)
+    else:
+        sector_median_pe = None
+        
+    pe = fin['ratio'].get('priceToEarning', fin['ratio'].get('pe'))
+    
+    if pe and sector_median_pe and pe < (0.8 * sector_median_pe):
+        score_fa += 10
+        fa_notes.append("Undervalued")
+        
+    # 2. Efficiency (10 pts)
+    roe = fin['ratio'].get('roe', 0)
+    if roe and roe >= 0.15:
+        score_fa += 10
+        fa_notes.append("High ROE")
+        
+    # 3. Cash Flow Quality (15 pts)
+    # Check 1: CFO > Net Income (Real money vs Paper money)
+    cfo = fin['cashflow'].iloc[0].get('fromOper', 0) if not fin['cashflow'].empty else 0
+    net_income = fin['income'].get('postTaxProfit', 0)
+    
+    # Check 2: Positive CFO last 2 years
+    cfo_history = fin['cashflow']['fromOper'].head(2) if 'fromOper' in fin['cashflow'].columns else []
+    cfo_positive_2y = len(cfo_history) >= 2 and all(c > 0 for c in cfo_history)
+    
+    if cfo > net_income:
+        score_fa += 10
+        fa_notes.append("Quality Earnings")
+        
+    if cfo_positive_2y:
+        score_fa += 5
+        fa_notes.append("Stable Cashflow")
+        
+    # 4. Financial Health (5 pts)
+    debt = fin['ratio'].get('debtOnEquity', fin['ratio'].get('debtToEquity', 100))
+    if debt <= 1.0:
+        score_fa += 5
+        fa_notes.append("Low Debt")
+        
+    # --- PART B: TECHNICAL ANALYSIS (60 Points) ---
+    score_ta = 0
+    ta_notes = []
+    
+    # Pre-calc Indicators
+    df['SMA_50'] = df['Close'].rolling(window=50).mean()
+    df['EMA_200'] = df['Close'].ewm(span=200, adjust=False).mean()
+    current_price = df['Close'].iloc[-1]
+    
+    # 1. Trend Filter (10 pts)
+    if current_price > df['EMA_200'].iloc[-1]: # Using EMA 200 for broader trend as per typical Wyckoff
+        score_ta += 5
+        ta_notes.append("Uptrend (EMA200)")
+        
+    if current_price > df['SMA_50'].iloc[-1]:
+        score_ta += 5
+        ta_notes.append("Uptrend (SMA50)")
 
-def detect_ict_order_block(df):
-    """
-    Bullish Order Block:
-    1. Identify Swing High (Structure) -> Break above it (MSS)
-    2. Find the last down candle before that move.
-    3. Current Price retracing into that zone.
-    """
-    # Simplified Logic for demonstration
-    # Find a strong move up (Green candle > 1.5x ATR sized body)
-    # Check if we are currently handling a pullback
-    
-    # Identify local structure break
-    # ... (Complex logic, simplified here for script robustness)
-    
-    # Basic Pullback to demand zone
-    last_week = df.iloc[-5:]
-    is_pullback = (last_week['Close'] < last_week['Open']).sum() >= 3 # Trend down recently
-    
-    # Check EMA 200 trend
-    is_uptrend = df['Close'].iloc[-1] > df['EMA_200'].iloc[-1]
-    
-    if is_uptrend and is_pullback:
-        # Check for bullish engulfing or hammer at SMA 50
-        sma_50 = df['SMA_50'].iloc[-1]
-        current_low = df['Low'].iloc[-1]
+    # 2. Wyckoff Structure - Spring (20 pts)
+    # Logic: Lowest Low of last 40 days < Recent Support, but Close > Support
+    window = df.iloc[-40:-2]
+    if not window.empty:
+        support_level = window['Low'].min()
+        recent_low = df['Low'].iloc[-1]
+        recent_close = df['Close'].iloc[-1]
         
-        if abs(current_low - sma_50) / sma_50 < 0.03: # Near SMA 50 (Relaxed 3%)
-            return True
+        if recent_low < support_level and recent_close > support_level:
+            score_ta += 20
+            ta_notes.append("Wyckoff Spring")
             
-    return False
-
-def analyze_market_structure(symbol):
-    """Run TA checks on a symbol"""
-    df = fetch_price_data(symbol)
-    if df.empty: return None
+    # 3. ICT Order Block (15 pts)
+    # Simplified detection: Bullish engulfing near SMA 50 pullback
+    # Check pullback first: 3 red candles in last 5
+    is_pullback = (df['Close'].iloc[-5:] < df['Open'].iloc[-5:]).sum() >= 3
+    near_support = abs(current_price - df['SMA_50'].iloc[-1]) / df['SMA_50'].iloc[-1] < 0.03
     
-    df = calculate_indicators(df)
-    
-    # Check 1: Wyckoff Spring
-    is_spring, support = detect_wyckoff_spring(df)
-    if is_spring:
-        return {
-            'symbol': symbol,
-            'pattern': 'Wyckoff Spring',
-            'support': support,
-            'signal': 'STRONG BUY',
-            'df': df
-        }
+    if is_pullback and near_support:
+        score_ta += 15
+        ta_notes.append("ICT Order Block Retest")
         
-    # Check 2: ICT OB / Pullback
-    is_ob = detect_ict_order_block(df)
-    if is_ob:
-        return {
-            'symbol': symbol,
-            'pattern': 'ICT Pullback/OB',
-            'signal': 'BUY',
-            'df': df
-        }
+    # 4. Smart Money Volume (15 pts)
+    avg_vol_20 = df['Volume'].iloc[-21:-1].mean()
+    current_vol = df['Volume'].iloc[-1]
+    
+    if current_vol > 1.2 * avg_vol_20:
+        score_ta += 15
+        ta_notes.append("Volume Spike")
         
-    return None
-
-# --- 4. VISUALIZATION ---
-
-def plot_setup(setup_data):
-    """Plot the chart using mplfinance"""
-    symbol = setup_data['symbol']
-    df = setup_data['df']
-    pattern = setup_data['pattern']
+    # --- FINAL SCORE & RECOMMENDATION ---
+    total_score = score_fa + score_ta
     
-    # Slice last 100 candles for clearer view
-    plot_df = df.iloc[-100:]
-    
-    apds = [
-        mpf.make_addplot(plot_df['SMA_50'], color='blue', panel=0, width=1.5),
-        mpf.make_addplot(plot_df['EMA_200'], color='red', panel=0, width=1.5),
-    ]
-    
-    # Save chart to static folder
-    # Ensure directory exists: backend/static/charts
-    chart_dir = os.path.join(os.path.dirname(__file__), 'static', 'charts')
-    os.makedirs(chart_dir, exist_ok=True)
-    
-    filename = f"{symbol}_{pattern.replace(' ', '_').replace('/', '_')}.png"
-    filepath = os.path.join(chart_dir, filename)
-    
-    mpf.plot(
-        plot_df,
-        type='candle',
-        style='yahoo',
-        addplot=apds,
-        title=f"{symbol} - {pattern}",
-        volume=True,
-        savefig=dict(fname=filepath, dpi=100, bbox_inches='tight')
-    )
-    # print(f"Chart saved: {filepath}")
-    return filename
-
-# --- MAIN EXECUTION ---
-
-def run_screener(limit=20):
-    """Run the screener and return results as a list of dictionaries"""
-    print(f"🚀 Starting Quantum Screener (Limit {limit})...")
-    
-    # 1. Fetch Candidates
-    candidates = fetch_all_stocks()
-    if not candidates:
-        # Fallback for testing/offline
-        candidates = ['VCB', 'HPG', 'FPT', 'SSI', 'MWG', 'DGC', 'VNM', 'TCB', 'MBB', 'ACB']
-    
-    # Limit for performance
-    candidates = candidates[:limit]
-    
-    passed_fa = []
-    
-    # 2. Run FA
-    print(f"Phase 1: Screening {len(candidates)} stocks...")
-    for symbol in candidates:
-        fa_result = analyze_fundamentals(symbol)
-        if fa_result:
-            passed_fa.append(fa_result)
-            
-    # 3. Run TA
-    print(f"Phase 2: Technical Analysis on {len(passed_fa)} stocks...")
-    final_signals = []
-    
-    for item in passed_fa:
-        symbol = item['symbol']
-        ta_result = analyze_market_structure(symbol)
+    if total_score >= 80:
+        recommendation = "STRONG BUY"
+    elif total_score >= 60:
+        recommendation = "WATCH / ACCUMULATE"
+    else:
+        recommendation = "WAIT"
         
-        if ta_result:
-            # Plot
-            chart_filename = plot_setup(ta_result)
-            
-            # Combine data
-            signal_data = {
-                **item, 
-                'pattern': ta_result['pattern'],
-                'signal': ta_result['signal'],
-                'support_level': ta_result.get('support', 0),
-                'chart_url': f"/static/charts/{chart_filename}"
-            }
-            final_signals.append(signal_data)
-            
-    # Fallback for UI testing if no signals found
-    if not final_signals:
-        print("No signals found. Generating mock signals for UI testing...")
-        final_signals = get_mock_signals()
-        
-    return final_signals
+    return {
+        "symbol": symbol,
+        "score_fa": score_fa,
+        "score_ta": score_ta,
+        "total_score": total_score,
+        "pe": pe,
+        "roe": roe,
+        "recommendation": recommendation,
+        "notes_fa": ", ".join(fa_notes),
+        "notes_ta": ", ".join(ta_notes),
+        "df": df # Return DF for charting
+    }
 
-def generate_debug_chart(symbol, pattern_name):
-    """Generate a chart for debug/mock purposes"""
+# --- 4. CHART GENERATION ---
+
+def generate_chart(symbol, df, pattern_name):
+    """Generate chart for high-scoring stocks"""
     try:
-        df = fetch_price_data(symbol)
-        if df.empty: return None
-        df = calculate_indicators(df)
+        plot_df = df.iloc[-100:]
+        apds = [
+            mpf.make_addplot(plot_df['SMA_50'], color='blue', panel=0, width=1.5),
+            mpf.make_addplot(plot_df['EMA_200'], color='red', panel=0, width=1.5),
+        ]
         
-        # Create a mock setup object
-        mock_setup = {
-            'symbol': symbol,
-            'pattern': pattern_name,
-            'df': df
-        }
-        return plot_setup(mock_setup)
+        chart_dir = os.path.join(os.path.dirname(__file__), 'static', 'charts')
+        os.makedirs(chart_dir, exist_ok=True)
+        
+        filename = f"{symbol}_{pattern_name.replace(' ', '_').replace('/', '_')}.png"
+        filepath = os.path.join(chart_dir, filename)
+        
+        mpf.plot(
+            plot_df,
+            type='candle',
+            style='yahoo',
+            addplot=apds,
+            title=f"{symbol} - {pattern_name}",
+            volume=True,
+            savefig=dict(fname=filepath, dpi=100, bbox_inches='tight')
+        )
+        return filename
     except Exception as e:
-        print(f"Error generating debug chart for {symbol}: {e}")
+        print(f"Chart Error {symbol}: {e}")
         return None
 
-def get_mock_signals():
-    """Generate high-quality mock signals for UI demonstration"""
-    signals = [
-        {
-            'symbol': 'VCB',
-            'pattern': 'Wyckoff Spring',
-            'signal': 'STRONG BUY',
-            'pe': 12.5,
-            'roe': 0.182,
-            'support_level': 85000,
-            'cfo_vs_ni': "25.0B vs 20.0B"
-        },
-        {
-            'symbol': 'HPG',
-            'pattern': 'ICT Order Block',
-            'signal': 'BUY',
-            'pe': 10.2,
-            'roe': 0.22,
-            'support_level': 26500,
-            'cfo_vs_ni': "15.0B vs 12.0B"
-        },
-        {
-            'symbol': 'FPT',
-            'pattern': 'Consolidation Breakout',
-            'signal': 'ACCUMULATE',
-            'pe': 18.5,
-            'roe': 0.25,
-            'support_level': 98000,
-            'cfo_vs_ni': "8.0B vs 7.5B"
-        }
-    ]
-    
-    # Generate charts for each mock signal
-    for s in signals:
-        filename = generate_debug_chart(s['symbol'], s['pattern'])
-        if filename:
-            s['chart_url'] = f"/static/charts/{filename}"
-        else:
-            s['chart_url'] = None
-            
-    return signals
+# --- 5. MAIN EXECUTION ---
 
-def main():
-    results = run_screener()
+def run_screener(limit=20):
+    print(f"🚀 Master Stock Screener Initialized (Limit {limit})...")
     
-    # 4. Report
-    if results:
-        print("\n🏆 TOP PICKS:")
-        for s in results:
-            print(f"- {s['symbol']}: {s['pattern']} (PE: {s['pe']:.1f}, ROE: {s['roe']*100:.1f}%)")
-    else:
-        print("\nNo sniper entries found today.")
+    # 1. Fetch Universe
+    try:
+        # Get all listing companies with sector info
+        companies = listing_companies()
+        if companies is None or companies.empty:
+            print("❌ Failed to fetch company list.")
+            return []
+            
+        # Filter for HOSE/HNX
+        companies = companies[companies['comGroupCode'].isin(['HOSE', 'HNX'])]
+        all_tickers = companies['ticker'].tolist()
+        
+        # Shuffle to avoid always checking banks first (if sorted)
+        import random
+        random.shuffle(all_tickers)
+        candidates = all_tickers[:limit] # Restrict for performance
+        
+    except Exception as e:
+        print(f"❌ Error initializing screener: {e}")
+        return []
+        
+    results = []
+    print(f"🔍 Analyzing {len(candidates)} candidates...")
+    
+    for symbol in candidates:
+        try:
+            score_data = calculate_stock_score(symbol, companies)
+            
+            if score_data and score_data['total_score'] >= 60:
+                # Generate Chart for Good Candidates
+                pattern_label = score_data['recommendation']
+                if "Wyckoff" in score_data['notes_ta']: pattern_label = "Wyckoff Spring"
+                elif "ICT" in score_data['notes_ta']: pattern_label = "ICT Setup"
+                
+                chart_url = generate_chart(symbol, score_data['df'], pattern_label)
+                
+                # Format for Frontend
+                result_item = {
+                    "symbol": score_data['symbol'],
+                    "pattern": pattern_label,
+                    "signal": score_data['recommendation'],
+                    "pe": score_data['pe'],
+                    "roe": score_data['roe'],
+                    "total_score": score_data['total_score'],
+                    "cfo_vs_ni": f"Score: {score_data['score_fa']}/40 FA",
+                    "support_level": 0, # Placeholder
+                    "chart_url": f"/static/charts/{chart_url}" if chart_url else None
+                }
+                results.append(result_item)
+                print(f"✅ FOUND: {symbol} - Score: {score_data['total_score']} ({score_data['recommendation']})")
+                
+        except Exception as e:
+            # print(f"Skipping {symbol}: {e}")
+            continue
+            
+    # Sort by Score Descending
+    results.sort(key=lambda x: x['total_score'], reverse=True)
+    return results
 
 if __name__ == "__main__":
-    main()
+    top_picks = run_screener(limit=30)
+    print("\n🏆 FINAL RESULTS:")
+    for pick in top_picks:
+        print(f"{pick['symbol']}: {pick['signal']} (Score: {pick['total_score']})")

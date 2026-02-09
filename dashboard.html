@@ -580,7 +580,13 @@
                     <div class="relative z-10">
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <h4 class="text-2xl font-bold text-slate-800 tracking-tight">${signal.symbol}</h4>
+                                <h4 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                                    ${signal.symbol}
+                                    ${signal.total_score ? `
+                                    <span class="text-xs ${signal.total_score >= 80 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'} px-2 py-0.5 rounded-full font-extrabold border border-current/10">
+                                        ${signal.total_score}/100
+                                    </span>` : ''}
+                                </h4>
                                 <span class="text-xs text-slate-400 font-medium">HOSE</span>
                             </div>
                             <span class="px-3 py-1 rounded-lg text-xs font-bold tracking-wide flex items-center gap-1 ${signalClass}">
@@ -591,31 +597,26 @@
                         <div class="space-y-3 mb-4">
                             <div class="flex items-center gap-2 text-sm">
                                 <span class="w-20 text-slate-400">Mẫu hình</span>
-                                <span class="font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs select-none">
-                                    ${signal.pattern}
+                                <span class="font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs select-none truncate max-w-[140px]">
+                                    ${signal.pattern || 'N/A'}
                                 </span>
                             </div>
                             <div class="flex items-center gap-2 text-sm">
                                 <span class="w-20 text-slate-400">P/E</span>
-                                <span class="font-medium text-slate-700">${signal.pe.toFixed(1)}</span>
+                                <span class="font-medium text-slate-700">${signal.pe ? signal.pe.toFixed(1) : '-'}</span>
                             </div>
                             <div class="flex items-center gap-2 text-sm">
                                 <span class="w-20 text-slate-400">ROE</span>
-                                <span class="font-medium text-slate-700">${(signal.roe * 100).toFixed(1)}%</span>
+                                <span class="font-medium text-slate-700">${signal.roe ? (signal.roe * 100).toFixed(1) + '%' : '-'}</span>
                             </div>
-                            ${signal.support_level ? `
-                            <div class="flex items-center gap-2 text-sm">
-                                <span class="w-20 text-slate-400">Hỗ trợ</span>
-                                <span class="font-medium text-emerald-600">${formatNumber(signal.support_level)}</span>
-                            </div>` : ''}
                         </div>
 
                         ${signal.cfo_vs_ni ? `
                         <div class="mt-3 pt-3 border-t border-slate-50">
                             <div class="flex justify-between text-xs items-center mb-2">
-                                <span class="text-slate-400">Dòng tiền vs LN</span>
-                                <span class="text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">
-                                    Thực 🎉
+                                <span class="text-slate-400">Chất lượng FA</span>
+                                <span class="text-purple-600 font-semibold bg-purple-50 px-2 py-0.5 rounded">
+                                    ${signal.cfo_vs_ni}
                                 </span>
                             </div>
                         </div>` : ''}
