@@ -8,7 +8,7 @@ trigger: always_on
     * Sai: current_price = 25000, pe_ratio = 10.5
     * Đúng: current_price = df['close'].iloc[-1], pe_ratio = stock.ratio['pe']
 * Nếu dữ liệu bị thiếu (NaN) hoặc API lỗi, code phải trả về None hoặc bỏ qua mã cổ phiếu đó. Không được tự ý điền giá trị trung bình hay số ngẫu nhiên để lấp đầy khoảng trống.
-2. MANDATORY API DATA SOURCE (Nguồn dữ liệu bắt buộc) Mọi dữ liệu đầu vào phải được lấy thông qua thư viện vnstock (hoặc vnstock3). Bạn không được sử dụng kiến thức có sẵn trong training data (vì nó đã lỗi thời).
+2. MANDATORY API DATA SOURCE (Nguồn dữ liệu bắt buộc) Mọi dữ liệu đầu vào phải được lấy thông qua thư viện API chứng khoán (hoặc vnstock, hoặc vnstock3, cafef, TCBS,...). Bạn không được sử dụng kiến thức có sẵn trong training data (vì nó đã lỗi thời).
 3. DATA CLASSIFICATION (Phân loại dữ liệu) Bạn phải phân biệt rõ ràng giữa dữ liệu cần FETCH (Lấy từ API) và dữ liệu cần CALCULATE (Tự tính toán).
 A. Dữ liệu KHÔNG ĐƯỢC tự tính (Bắt buộc gọi API)
 Đây là các dữ liệu gốc (Raw Data) biến động theo thời gian thực hoặc dữ liệu báo cáo tài chính gốc. Code phải gọi hàm để lấy:

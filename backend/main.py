@@ -489,13 +489,13 @@ async def smart_screener(criteria: dict = None):
 
 
 @app.get("/api/screener/quant")
-async def get_quant_screener(limit: int = 20):
-    """Run the advanced Wyckoff/ICT screener"""
+async def get_quant_screener(limit: int = 20, page: int = 1):
+    """Run the advanced Wyckoff/ICT screener with pagination"""
     try:
         # Run in a separate thread using run_in_executor
         import asyncio
         loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(None, run_screener, limit)
+        results = await loop.run_in_executor(None, run_screener, limit, page)
         return {"count": len(results), "data": results}
     except Exception as e:
         traceback.print_exc()

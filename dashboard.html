@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VNStock Real-Time Dashboard</title>
+    <title>VNStock AI Screener (VN100)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
@@ -33,157 +33,145 @@
         .animate-pulse-live {
             animation: pulse-live 2s infinite;
         }
-
-        @keyframes flash-up {
-            0% {
-                background-color: rgba(16, 185, 129, 0);
-            }
-
-            50% {
-                background-color: rgba(16, 185, 129, 0.3);
-            }
-
-            100% {
-                background-color: rgba(16, 185, 129, 0);
-            }
-        }
-
-        @keyframes flash-down {
-            0% {
-                background-color: rgba(239, 68, 68, 0);
-            }
-
-            50% {
-                background-color: rgba(239, 68, 68, 0.3);
-            }
-
-            100% {
-                background-color: rgba(239, 68, 68, 0);
-            }
-        }
-
-        .flash-up {
-            animation: flash-up 0.5s ease-out;
-        }
-
-        .flash-down {
-            animation: flash-down 0.5s ease-out;
-        }
-
-        .glass {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-        }
     </style>
 </head>
 
-<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 min-h-screen">
+<body class="bg-slate-50 min-h-screen text-slate-800">
     <!-- Header -->
-    <header class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl">
-        <div class="max-w-7xl mx-auto px-4 py-4">
+    <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3">
             <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-indigo-600 rounded-lg text-white">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold tracking-tight">VNStock Real-Time</h1>
-                        <p class="text-xs text-slate-400">Dữ liệu chứng khoán Việt Nam</p>
+                        <h1 class="text-xl font-bold tracking-tight text-slate-900">VNStock <span
+                                class="text-indigo-600">AI Screener</span></h1>
+                        <p class="text-xs text-slate-500">Phân tích chuyên sâu 100 mã VN100 (VN30 + Midcap)</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
                     <div id="connection-status"
-                        class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-amber-500/20 text-amber-400">
-                        <div class="w-2 h-2 bg-amber-500 rounded-full"></div>
-                        <span>Đang kết nối...</span>
+                        class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-400">
+                        <div class="w-2 h-2 bg-slate-400 rounded-full"></div>
+                        <span>Chờ kết nối...</span>
                     </div>
-                    <div id="last-update" class="text-xs text-slate-400"></div>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        <!-- Market Overview -->
-        <div id="market-overview" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
-
-        <!-- Stats Cards -->
-        <div id="market-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-
-        <!-- Quant Signals Section -->
-        <div class="mt-8 mb-6">
-            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-4">
-                <span
-                    class="w-8 h-8 flex items-center justify-center bg-indigo-500 rounded-lg text-white text-lg">⚡️</span>
-                Tín Hiệu Giao Dịch (Quant)
-            </h3>
-            <div id="quant-signals" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div
-                    class="col-span-full py-12 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                    <svg class="w-8 h-8 mx-auto mb-2 opacity-50 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                    </svg>
-                    Đang tìm kiếm cơ hội đầu tư...
-                </div>
-            </div>
-        </div>
-
-        <!-- Price Board -->
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-            <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-4 text-white">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="p-2 bg-white/10 rounded-lg">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-lg font-bold">Bảng Giá Real-Time</h2>
-                            <p id="update-time" class="text-xs text-slate-400">Đang tải...</p>
-                        </div>
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        <!-- Unified AI Table -->
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+            <div
+                class="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <span class="text-2xl">🤖</span> Bảng Xếp Hạng AI
+                        <button onclick="toggleMethodology()"
+                            class="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-200">❓
+                            Cách tính điểm</button>
+                    </h2>
+                    <div class="text-xs text-slate-500 mt-2 flex gap-4 font-medium flex-wrap items-center">
+                        <span
+                            class="flex items-center gap-1 bg-green-50 px-2 py-1 rounded border border-green-200"><span
+                                class="w-2 h-2 rounded-full bg-green-500"></span> MUA MẠNH (≥80)</span>
+                        <span
+                            class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded border border-amber-200"><span
+                                class="w-2 h-2 rounded-full bg-amber-500"></span> THEO DÕI (60-79)</span>
+                        <span
+                            class="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded border border-slate-200"><span
+                                class="w-2 h-2 rounded-full bg-slate-400"></span> CHỜ (<60)< /span>
+                                <span class="border-l border-slate-300 pl-4 ml-2 text-indigo-600 font-semibold">💡 Click
+                                    vào dòng để xem chi tiết!</span>
                     </div>
-                    <button onclick="fetchData()"
-                        class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                        <svg id="refresh-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span id="ai-loading" class="text-xs font-medium text-slate-500 hidden flex items-center gap-1">
+                        <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
                         </svg>
-                        Làm mới
+                        Đang quét...
+                    </span>
+                    <button onclick="fetchQuantSignals(1)"
+                        class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 transform hover:scale-105 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Quét Mã (Trang 1)
                     </button>
                 </div>
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider">
-                            <th class="px-4 py-3 text-left font-semibold">Mã CK</th>
-                            <th class="px-4 py-3 text-right font-semibold">Giá</th>
-                            <th class="px-4 py-3 text-right font-semibold">+/-</th>
-                            <th class="px-4 py-3 text-right font-semibold">%</th>
-                            <th class="px-4 py-3 text-right font-semibold">Khối lượng</th>
-                            <th class="px-4 py-3 text-right font-semibold">Giá trị (tỷ)</th>
-                            <th class="px-4 py-3 text-right font-semibold">NN Mua</th>
-                            <th class="px-4 py-3 text-right font-semibold">NN Bán</th>
+                        <tr class="bg-white text-xs text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                            <th class="px-6 py-4 font-bold text-center w-16 bg-slate-50/50">#</th>
+                            <th class="px-6 py-4 font-bold">Mã CP</th>
+                            <th class="px-6 py-4 font-bold w-64">AI Score</th>
+                            <th class="px-6 py-4 font-bold hidden md:table-cell text-center">FA / TA</th>
+                            <th class="px-6 py-4 font-bold text-center">Tín Hiệu</th>
+                            <th class="px-6 py-4 font-bold w-1/3">Lý Do (Reasoning)</th>
+                            <th class="px-6 py-4 font-bold text-center">Chart</th>
                         </tr>
                     </thead>
-                    <tbody id="price-table" class="divide-y divide-slate-100">
-                        <!-- Data will be populated here -->
+                    <tbody id="ai-ranking-body" class="divide-y divide-slate-100 text-sm bg-white">
+                        <tr>
+                            <td colspan="7" class="px-6 py-24 text-center text-slate-400">
+                                <div class="flex flex-col items-center">
+                                    <div
+                                        class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mb-4 text-indigo-200">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <p class="text-lg font-medium text-slate-600">Sẵn sàng phân tích (Chế độ Phân trang)
+                                    </p>
+                                    <p class="text-sm mt-2 text-slate-400 max-w-md mx-auto">Mỗi lần quét 20 mã để giảm
+                                        tải API và tăng tốc độ.</p>
+                                    <button onclick="fetchQuantSignals(1)"
+                                        class="mt-6 text-indigo-600 font-semibold hover:underline">Bắt đầu quét
+                                        &rarr;</button>
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div id="footer-stats" class="bg-slate-50 px-4 py-3 border-t border-slate-100">
-                <!-- Footer stats -->
+            <!-- Pagination -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-center items-center gap-4">
+                <button onclick="changePage(-1)"
+                    class="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 text-sm text-slate-600 disabled:opacity-50"
+                    id="btn-prev">
+                    &larr; Trang Trước
+                </button>
+                <span id="page-display" class="text-sm font-bold text-slate-700">Trang 1 / 5</span>
+                <button onclick="changePage(1)"
+                    class="px-3 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 text-sm text-slate-600 disabled:opacity-50"
+                    id="btn-next">
+                    Trang Sau &rarr;
+                </button>
+            </div>
+
+            <div
+                class="px-6 py-2 bg-slate-50 text-xs text-slate-400 flex justify-between items-center border-t border-slate-100">
+                <span>Dữ liệu từ API VNStock.</span>
+                <span id="scan-time"></span>
             </div>
         </div>
     </main>
@@ -193,44 +181,112 @@
         aria-modal="true">
         <div class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity" onclick="closeChartModal()">
         </div>
-
         <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
             <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
                 <div
-                    class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl">
+                    class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-5xl">
                     <div class="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                        <div class="sm:flex sm:items-start">
-                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                                <h3 class="text-xl font-semibold leading-6 text-slate-900 mb-4" id="modal-title">Biểu đồ
-                                    kỹ thuật</h3>
-                                <div
-                                    class="w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200 min-h-[400px] flex items-center justify-center relative">
-                                    <div id="chart-loading"
-                                        class="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
-                                        <svg class="w-8 h-8 animate-spin text-indigo-500" fill="none"
-                                            viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor"
-                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                            </path>
-                                        </svg>
-                                    </div>
-                                    <img id="modal-chart-img" src="" alt="Technical Chart"
-                                        class="w-full h-auto object-contain hidden"
-                                        onload="document.getElementById('chart-loading').classList.add('hidden'); this.classList.remove('hidden');">
+                        <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                            <h3 class="text-xl font-bold leading-6 text-slate-900 mb-4 flex justify-between"
+                                id="modal-title">Biểu đồ kỹ thuật</h3>
+                            <div
+                                class="w-full bg-slate-50 rounded-lg overflow-hidden border border-slate-200 min-h-[500px] flex items-center justify-center relative">
+                                <div id="chart-loading"
+                                    class="absolute inset-0 flex items-center justify-center bg-slate-50 z-10 hidden">
+                                    <svg class="w-8 h-8 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                        </path>
+                                    </svg>
                                 </div>
-                                <p class="mt-2 text-sm text-slate-500">
-                                    Biểu đồ bao gồm đường SMA 50 (Xanh) và EMA 200 (Đỏ). Nến nhật.
-                                </p>
+                                <img id="modal-chart-img" src="" alt="Technical Chart"
+                                    class="w-full h-auto object-contain">
                             </div>
                         </div>
                     </div>
-                    <div class="bg-slate-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                        <button type="button"
-                            class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto"
-                            onclick="closeChartModal()">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Methodology Modal -->
+    <div id="methodology-modal" class="fixed inset-0 z-50 hidden" role="dialog">
+        <div class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm" onclick="toggleMethodology()"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white">
+                    <h3 class="text-xl font-bold text-slate-800">📊 Phương Pháp Tính Điểm AI</h3>
+                    <button onclick="toggleMethodology()"
+                        class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+                </div>
+                <div class="p-6 space-y-6 text-sm text-slate-700">
+                    <p class="text-base">Hệ thống AI của chúng tôi chấm điểm mỗi cổ phiếu trên thang 100 điểm, dựa trên
+                        2 nhóm tiêu chí:</p>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-bold text-blue-800 text-lg mb-3">🏢 PHÂN TÍCH CƠ BẢN (FA) - 40 Điểm</h4>
+                        <ul class="space-y-2">
+                            <li class="flex justify-between"><span>📈 <b>Định giá hấp dẫn</b>: P/E thấp hơn 90% trung vị
+                                    ngành</span><span class="font-mono bg-blue-100 px-2 rounded">10 đ</span></li>
+                            <li class="flex justify-between"><span>🚀 <b>Tăng trưởng mạnh</b>: Lợi nhuận >15% VÀ Doanh
+                                    thu >10% YoY</span><span class="font-mono bg-blue-100 px-2 rounded">10 đ</span></li>
+                            <li class="flex justify-between"><span>💰 <b>Biên lợi nhuận cải thiện</b>: Biên gộp tăng >5%
+                                    YoY</span><span class="font-mono bg-blue-100 px-2 rounded">10 đ</span></li>
+                            <li class="flex justify-between"><span>🏦 <b>Tài chính lành mạnh</b>: Tỷ lệ Nợ/Vốn CSH <
+                                        0.8</span><span class="font-mono bg-blue-100 px-2 rounded">10 đ</span></li>
+                        </ul>
                     </div>
+
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <h4 class="font-bold text-purple-800 text-lg mb-3">📉 PHÂN TÍCH KỸ THUẬT (TA) - 60 Điểm</h4>
+                        <ul class="space-y-2">
+                            <li class="flex justify-between"><span>📊 <b>Xu hướng (Ichimoku)</b>: Giá trên đường
+                                    Kijun-sen & Tenkan > Kijun</span><span
+                                    class="font-mono bg-purple-100 px-2 rounded">15 đ</span></li>
+                            <li class="flex justify-between"><span>⚡ <b>Động lực (MACD)</b>: Đường MACD cắt lên Signal +
+                                    Histogram dương</span><span class="font-mono bg-purple-100 px-2 rounded">15 đ</span>
+                            </li>
+                            <li class="flex justify-between"><span>🎯 <b>RSI</b>: Trong vùng tích lũy (45-65) hoặc quá
+                                    bán (<30)< /span><span class="font-mono bg-purple-100 px-2 rounded">15 đ</span></li>
+                            <li class="flex justify-between"><span>📦 <b>Khối lượng (VSA)</b>: Volume đột biến + Nến
+                                    tăng rộng</span><span class="font-mono bg-purple-100 px-2 rounded">15 đ</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 class="font-bold text-green-800">🏆 Kết Luận</h4>
+                        <ul class="mt-2 space-y-1">
+                            <li><span
+                                    class="inline-block w-24 bg-green-500 text-white px-2 py-0.5 rounded text-center font-bold">MUA
+                                    MẠNH</span> Điểm ≥ 80: Cổ phiếu chất lượng cao, tín hiệu kỹ thuật mạnh</li>
+                            <li><span
+                                    class="inline-block w-24 bg-amber-400 text-amber-900 px-2 py-0.5 rounded text-center font-bold">THEO
+                                    DÕI</span> Điểm 60-79: Tiềm năng, cần theo dõi thêm điểm vào</li>
+                            <li><span
+                                    class="inline-block w-24 bg-slate-300 text-slate-700 px-2 py-0.5 rounded text-center font-bold">CHỜ</span>
+                                Điểm < 60: Chưa đủ điều kiện, nên chờ tín hiệu rõ hơn</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Score Detail Modal -->
+    <div id="score-detail-modal" class="fixed inset-0 z-50 hidden" role="dialog">
+        <div class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm" onclick="closeDetailModal()"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+                    <h3 id="detail-modal-title" class="text-xl font-bold text-slate-800">Chi Tiết Điểm</h3>
+                    <button onclick="closeDetailModal()"
+                        class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+                </div>
+                <div id="detail-modal-content" class="p-5 space-y-4">
+                    <!-- Content injected by JS -->
                 </div>
             </div>
         </div>
@@ -238,425 +294,232 @@
 
     <script>
         const API_BASE = 'http://localhost:8000';
-        let ws = null;
-        let previousPrices = {};
+        let currentPage = 1;
+        const totalPages = 5;
 
-        // Format number with locale
-        const formatNumber = (num) => num?.toLocaleString('vi-VN') || '0';
-        const formatVolume = (vol) => {
-            if (vol >= 1000000) return (vol / 1000000).toFixed(1) + 'M';
-            if (vol >= 1000) return (vol / 1000).toFixed(0) + 'K';
-            return vol?.toString() || '0';
-        };
+        // Auto Load on Start
+        window.addEventListener('load', () => {
+            // fetchQuantSignals(1); // Manual trigger preferred
+            updatePaginationUI();
+        });
 
-        // Get price color class
-        const getPriceColor = (quote) => {
-            if (quote.price >= quote.ceilingPrice) return 'text-purple-600 bg-purple-50';
-            if (quote.price <= quote.floorPrice) return 'text-cyan-500 bg-cyan-50';
-            if (quote.changePercent > 0) return 'text-emerald-600';
-            if (quote.changePercent < 0) return 'text-red-500';
-            return 'text-amber-500';
-        };
-
-        // Get change badge class
-        const getChangeBadge = (changePercent) => {
-            if (changePercent > 0) return 'bg-emerald-50 text-emerald-600';
-            if (changePercent < 0) return 'bg-red-50 text-red-500';
-            return 'bg-slate-100 text-slate-600';
-        };
-
-        // Update connection status
-        const updateConnectionStatus = (connected) => {
-            const el = document.getElementById('connection-status');
-            if (connected) {
-                el.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400';
-                el.innerHTML = `<div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse-live"></div><span>Live</span>`;
-            } else {
-                el.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-red-500/20 text-red-400';
-                el.innerHTML = `<div class="w-2 h-2 bg-red-500 rounded-full"></div><span>Offline</span>`;
-            }
-        };
-
-        // Render market overview
-        const renderMarketOverview = (data) => {
-            const container = document.getElementById('market-overview');
-
-            const indices = [
-                { name: 'VN-Index', data: data.vnindex, color: 'from-blue-500 to-indigo-600' },
-                { name: 'HNX-Index', data: data.hnxindex, color: 'from-emerald-500 to-teal-600' },
-                { name: 'UPCOM', data: data.upcomIndex, color: 'from-purple-500 to-pink-600' }
-            ];
-
-            container.innerHTML = indices.map(idx => `
-                <div class="relative overflow-hidden rounded-2xl p-5 text-white bg-gradient-to-br ${idx.color} shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                    <div class="relative z-10">
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-sm font-medium opacity-90">${idx.name}</span>
-                            <div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${idx.data.change >= 0 ? 'bg-white/20' : 'bg-black/20'}">
-                                ${idx.data.change >= 0 ? '↑' : '↓'} ${Math.abs(idx.data.changePercent).toFixed(2)}%
-                            </div>
-                        </div>
-                        <div class="text-3xl font-bold tracking-tight mb-1">${idx.data.value.toFixed(2)}</div>
-                        <div class="flex items-center gap-2 text-sm opacity-80">
-                            <span>${idx.data.change >= 0 ? '+' : ''}${idx.data.change.toFixed(2)} điểm</span>
-                            <span>•</span>
-                            <span>KL: ${formatVolume(idx.data.volume)}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        // Render market stats
-        const renderMarketStats = (data) => {
-            const container = document.getElementById('market-stats');
-            const total = data.advanceCount + data.declineCount + data.unchangedCount;
-            const advPct = (data.advanceCount / total * 100).toFixed(0);
-            const decPct = (data.declineCount / total * 100).toFixed(0);
-
-            container.innerHTML = `
-                <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                        <span class="text-xs font-semibold text-slate-500 uppercase">Độ rộng TT</span>
-                    </div>
-                    <div class="flex h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                        <div class="bg-emerald-500" style="width: ${advPct}%"></div>
-                        <div class="bg-red-500" style="width: ${decPct}%"></div>
-                    </div>
-                    <div class="flex justify-between text-xs">
-                        <span class="text-emerald-600 font-semibold">↑ ${data.advanceCount}</span>
-                        <span class="text-slate-400">${data.unchangedCount}</span>
-                        <span class="text-red-600 font-semibold">↓ ${data.declineCount}</span>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-                    <div class="flex items-center gap-2 mb-2">
-                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z"/>
-                        </svg>
-                        <span class="text-xs font-semibold text-slate-500 uppercase">Khối lượng</span>
-                    </div>
-                    <div class="text-2xl font-bold text-slate-900">${formatVolume(data.totalVolume)}</div>
-                    <p class="text-xs text-slate-400">cổ phiếu</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-                    <div class="flex items-center gap-2 mb-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <span class="text-xs font-semibold text-slate-500 uppercase">Giá trị GD</span>
-                    </div>
-                    <div class="text-2xl font-bold text-slate-900">${(data.totalValue / 1000).toFixed(1)}K</div>
-                    <p class="text-xs text-slate-400">tỷ đồng</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-                    <div class="flex items-center gap-2 mb-2">
-                        <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
-                        </svg>
-                        <span class="text-xs font-semibold text-slate-500 uppercase">NN Mua ròng</span>
-                    </div>
-                    <div class="text-2xl font-bold ${data.foreignNetBuy >= 0 ? 'text-emerald-600' : 'text-red-600'}">
-                        ${data.foreignNetBuy >= 0 ? '+' : ''}${data.foreignNetBuy.toFixed(0)}
-                    </div>
-                    <p class="text-xs text-slate-400">tỷ đồng</p>
-                </div>
-            `;
-        };
-
-        // Render price table
-        const renderPriceTable = (data) => {
-            const tbody = document.getElementById('price-table');
-
-            tbody.innerHTML = data.map(quote => {
-                const prevPrice = previousPrices[quote.ticker];
-                let flashClass = '';
-                if (prevPrice && quote.price !== prevPrice) {
-                    flashClass = quote.price > prevPrice ? 'flash-up' : 'flash-down';
-                }
-                previousPrices[quote.ticker] = quote.price;
-
-                return `
-                    <tr class="hover:bg-slate-50/80 transition-colors cursor-pointer ${flashClass}">
-                        <td class="px-4 py-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm ${quote.changePercent > 0 ? 'bg-emerald-50 text-emerald-600' :
-                        quote.changePercent < 0 ? 'bg-red-50 text-red-600' :
-                            'bg-amber-50 text-amber-600'
-                    }">
-                                    ${quote.ticker.slice(0, 3)}
-                                </div>
-                                <div>
-                                    <div class="font-semibold text-slate-900">${quote.ticker}</div>
-                                    <div class="text-xs text-slate-400">${quote.exchange}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <span class="mono font-bold ${getPriceColor(quote)} px-2 py-1 rounded">
-                                ${formatNumber(quote.price)}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-right mono font-semibold ${quote.change >= 0 ? 'text-emerald-600' : 'text-red-500'}">
-                            ${quote.change >= 0 ? '+' : ''}${formatNumber(quote.change)}
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${getChangeBadge(quote.changePercent)}">
-                                ${quote.changePercent >= 0 ? '↑' : '↓'} ${Math.abs(quote.changePercent).toFixed(2)}%
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-right mono font-medium text-slate-700">
-                            ${formatVolume(quote.volume)}
-                        </td>
-                        <td class="px-4 py-3 text-right mono font-medium text-slate-600">
-                            ${quote.totalValue.toFixed(1)}
-                        </td>
-                        <td class="px-4 py-3 text-right mono text-emerald-600">
-                            ${formatVolume(quote.foreignBuy)}
-                        </td>
-                        <td class="px-4 py-3 text-right mono text-red-500">
-                            ${formatVolume(quote.foreignSell)}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            // Update footer
-            const footer = document.getElementById('footer-stats');
-            const advance = data.filter(q => q.changePercent > 0).length;
-            const decline = data.filter(q => q.changePercent < 0).length;
-            const unchanged = data.length - advance - decline;
-            const totalVol = data.reduce((s, q) => s + q.volume, 0);
-
-            footer.innerHTML = `
-                <div class="flex items-center justify-between text-xs text-slate-500">
-                    <div class="flex items-center gap-4">
-                        <span class="flex items-center gap-1">
-                            <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                            Tăng: ${advance}
-                        </span>
-                        <span class="flex items-center gap-1">
-                            <div class="w-2 h-2 bg-red-500 rounded-full"></div>
-                            Giảm: ${decline}
-                        </span>
-                        <span class="flex items-center gap-1">
-                            <div class="w-2 h-2 bg-amber-500 rounded-full"></div>
-                            Đứng: ${unchanged}
-                        </span>
-                    </div>
-                    <div>Tổng: ${data.length} mã | KL: ${formatVolume(totalVol)}</div>
-                </div>
-            `;
-        };
-
-        // Fetch data from API
-        const fetchData = async () => {
-            const refreshIcon = document.getElementById('refresh-icon');
-            refreshIcon.classList.add('animate-spin');
-
-            try {
-                // Fetch market overview
-                const marketRes = await fetch(`${API_BASE}/api/market`);
-                const marketData = await marketRes.json();
-                renderMarketOverview(marketData);
-                renderMarketStats(marketData);
-
-                // Fetch price board
-                const priceRes = await fetch(`${API_BASE}/api/price-board`);
-                const priceData = await priceRes.json();
-                renderPriceTable(priceData.data);
-
-                // Update time
-                const now = new Date();
-                document.getElementById('update-time').textContent = `Cập nhật: ${now.toLocaleTimeString('vi-VN')}`;
-                document.getElementById('last-update').textContent = now.toLocaleTimeString('vi-VN');
-
-                updateConnectionStatus(true);
-            } catch (error) {
-                console.error('Fetch error:', error);
-                updateConnectionStatus(false);
-            }
-
-            refreshIcon.classList.remove('animate-spin');
-        };
-
-        // Connect WebSocket
-        const connectWebSocket = () => {
-            ws = new WebSocket('ws://localhost:8000/ws');
-
-            ws.onopen = () => {
-                console.log('WebSocket connected');
-                updateConnectionStatus(true);
-            };
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.data && Array.isArray(data.data)) {
-                    renderPriceTable(data.data);
-                    const now = new Date();
-                    document.getElementById('update-time').textContent = `Cập nhật: ${now.toLocaleTimeString('vi-VN')}`;
-                }
-            };
-
-            ws.onclose = () => {
-                console.log('WebSocket disconnected');
-                updateConnectionStatus(false);
-                // Reconnect after 3 seconds
-                setTimeout(connectWebSocket, 3000);
-            };
-
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-        };
-
-        // Initialize
-        fetchData();
-        fetchQuantSignals();
-        connectWebSocket();
-
-        // Auto refresh every 30 seconds if WS fails
-        setInterval(fetchData, 30000);
-        // Refresh signals every 5 minutes
-        setInterval(fetchQuantSignals, 300000);
-
-        // --- QUANT SIGNALS LOGIC ---
-        async function fetchQuantSignals() {
-            try {
-                const response = await fetch(`${API_BASE}/api/screener/quant?limit=25`);
-                const data = await response.json();
-                renderQuantSignals(data.data);
-            } catch (error) {
-                console.error('Error fetching quant signals:', error);
-                document.getElementById('quant-signals').innerHTML = `
-                    <div class="col-span-full py-8 text-center text-red-400 bg-red-50 rounded-xl border border-red-100">
-                        Không thể tải tín hiệu. Vui lòng thử lại sau.
-                    </div>
-                `;
+        async function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage >= 1 && newPage <= totalPages) {
+                fetchQuantSignals(newPage);
             }
         }
 
-        function renderQuantSignals(signals) {
-            const container = document.getElementById('quant-signals');
+        async function fetchQuantSignals(page = 1) {
+            currentPage = page;
+            updatePaginationUI();
 
-            if (!signals || signals.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full py-12 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                        Không tìm thấy tín hiệu phù hợp trong phiên này.
-                    </div>
-                `;
+            const tableBody = document.getElementById('ai-ranking-body');
+            const loading = document.getElementById('ai-loading');
+
+            loading.classList.remove('hidden');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-24 text-center text-slate-400">
+                        <div class="flex flex-col items-center animate-pulse">
+                            <span class="text-3xl mb-4">🤖</span>
+                            <p class="text-lg font-medium text-slate-600">AI đang quét Trang ${page}...</p>
+                            <p class="text-sm mt-1 text-slate-400">Đang tải 20 mã.</p>
+                        </div>
+                    </td>
+                </tr>`;
+
+            try {
+                // Fetch 20 stocks per page
+                const response = await fetch(`${API_BASE}/api/screener/quant?limit=20&page=${page}`);
+                const res = await response.json();
+
+                // If API returns {"count": N, "data": []}
+                const data = res.data || res; // Handle both formats if changed
+
+                renderQuantSignals(data);
+            } catch (error) {
+                console.error("Error:", error);
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-red-500">Lỗi kết nối hoặc API quá tải. Vui lòng thử lại sau 30s.</td></tr>`;
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function updatePaginationUI() {
+            document.getElementById('page-display').textContent = `Trang ${currentPage} / ${totalPages}`;
+            document.getElementById('btn-prev').disabled = currentPage === 1;
+            document.getElementById('btn-next').disabled = currentPage === totalPages;
+        }
+
+        function renderQuantSignals(data) {
+            const tbody = document.getElementById('ai-ranking-body');
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">Không có dữ liệu trên trang này.</td></tr>';
                 return;
             }
 
-            container.innerHTML = signals.map(signal => {
-                // Determine signal type style
-                let signalClass = 'bg-slate-100 text-slate-600';
-                let signalIcon = '';
+            // Cache data for detail modal
+            data.forEach(item => {
+                stockDataCache[item.symbol] = item;
+            });
 
-                if (signal.signal.includes('BUY')) {
-                    signalClass = signal.signal.includes('STRONG')
-                        ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-200'
-                        : 'bg-emerald-100 text-emerald-700 border border-emerald-200';
-                    signalIcon = '🚀';
-                } else if (signal.signal.includes('SELL')) {
-                    signalClass = 'bg-red-100 text-red-700 border border-red-200';
-                    signalIcon = '⚠️';
-                } else {
-                    signalClass = 'bg-amber-100 text-amber-700 border border-amber-200';
-                    signalIcon = '👀';
+            tbody.innerHTML = data.map((item, index) => {
+                const globalIndex = (currentPage - 1) * 20 + index + 1;
+                const score = item.total_score;
+                const badgeColor = score >= 80 ? 'text-green-600 bg-green-50 border-green-200' :
+                    score >= 60 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-slate-500 bg-slate-50 border-slate-100';
+
+                const barColor = score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-amber-500' : 'bg-slate-300';
+
+                const signalText = item.signal || "CHỜ";
+                // Vietnamese keywords: MUA = Buy (Green), BÁN = Sell (Red), CHỜ/THEO DÕI = Wait (Gray/Yellow)
+                const signalStyle = signalText.includes('MUA') ? 'bg-green-500 text-white font-bold shadow-lg shadow-green-200' :
+                    signalText.includes('BÁN') ? 'bg-red-500 text-white font-bold shadow-lg shadow-red-200' :
+                        signalText.includes('THEO') ? 'bg-amber-400 text-amber-900 font-semibold' : 'bg-slate-200 text-slate-600';
+
+                // Format chart url
+                let chartUrl = item.chart_url;
+                if (chartUrl && !chartUrl.startsWith('http')) {
+                    // Assume relative path
+                    // Ensure leading slash
+                    if (!chartUrl.startsWith('/')) chartUrl = '/' + chartUrl;
+                    chartUrl = API_BASE + chartUrl;
                 }
 
                 return `
-                <div class="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow border border-slate-100 relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-slate-50 to-white rounded-bl-full -mr-4 -mt-4 opacity-50 group-hover:scale-110 transition-transform"></div>
+                <tr onclick="showScoreDetail('${item.symbol}')" class="hover:bg-indigo-50 transition-colors cursor-pointer group border-b border-slate-50 last:border-0 relative">
+                    <td class="px-6 py-4 text-center font-bold text-slate-400 bg-slate-50/30 italic">#${globalIndex}</td>
                     
-                    <div class="relative z-10">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <h4 class="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                                    ${signal.symbol}
-                                    ${signal.total_score ? `
-                                    <span class="text-xs ${signal.total_score >= 80 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'} px-2 py-0.5 rounded-full font-extrabold border border-current/10">
-                                        ${signal.total_score}/100
-                                    </span>` : ''}
-                                </h4>
-                                <span class="text-xs text-slate-400 font-medium">HOSE</span>
-                            </div>
-                            <span class="px-3 py-1 rounded-lg text-xs font-bold tracking-wide flex items-center gap-1 ${signalClass}">
-                                ${signalIcon} ${signal.signal}
-                            </span>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-slate-800 text-lg">${item.symbol}</div>
+                        <div class="text-xs text-slate-400">HOSE</div>
+                    </td>
+                    
+                    <td class="px-6 py-4">
+                         <div class="flex items-center justify-between mb-1.5 w-full max-w-[200px]">
+                            <span class="text-sm font-extrabold ${badgeColor} px-2 py-0.5 rounded border">${score}/100</span>
+                            <span class="text-xs text-slate-400">FA:${item.score_fa || '-'} | TA:${item.score_ta || '-'}</span>
+                         </div>
+                         <div class="w-full max-w-[200px] bg-slate-100 rounded-full h-2 overflow-hidden">
+                             <div class="h-full rounded-full ${barColor} transition-all duration-1000 ease-out" style="width: ${score}%"></div>
+                         </div>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-center hidden md:table-cell">
+                        <div class="text-xs font-mono text-slate-500">
+                            <div>FA: <b class="${(item.score_fa || 0) >= 20 ? 'text-emerald-600' : 'text-slate-600'}">${item.score_fa || 0}/40</b></div>
+                            <div class="mt-1">TA: <b class="${(item.score_ta || 0) >= 40 ? 'text-blue-600' : 'text-slate-600'}">${item.score_ta || 0}/60</b></div>
                         </div>
-                        
-                        <div class="space-y-3 mb-4">
-                            <div class="flex items-center gap-2 text-sm">
-                                <span class="w-20 text-slate-400">Mẫu hình</span>
-                                <span class="font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs select-none truncate max-w-[140px]">
-                                    ${signal.pattern || 'N/A'}
-                                </span>
-                            </div>
-                            <div class="flex items-center gap-2 text-sm">
-                                <span class="w-20 text-slate-400">P/E</span>
-                                <span class="font-medium text-slate-700">${signal.pe ? signal.pe.toFixed(1) : '-'}</span>
-                            </div>
-                            <div class="flex items-center gap-2 text-sm">
-                                <span class="w-20 text-slate-400">ROE</span>
-                                <span class="font-medium text-slate-700">${signal.roe ? (signal.roe * 100).toFixed(1) + '%' : '-'}</span>
-                            </div>
-                        </div>
+                    </td>
 
-                        ${signal.cfo_vs_ni ? `
-                        <div class="mt-3 pt-3 border-t border-slate-50">
-                            <div class="flex justify-between text-xs items-center mb-2">
-                                <span class="text-slate-400">Chất lượng FA</span>
-                                <span class="text-purple-600 font-semibold bg-purple-50 px-2 py-0.5 rounded">
-                                    ${signal.cfo_vs_ni}
-                                </span>
-                            </div>
-                        </div>` : ''}
-                        
-                        ${signal.chart_url ? `
-                        <button onclick="showChart('${API_BASE}${signal.chart_url}', '${signal.symbol} - ${signal.pattern}')" class="w-full mt-2 py-2 flex items-center justify-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-100">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                            </svg>
-                            Xem Biểu Đồ
-                        </button>` : ''}
-                    </div>
-                </div>
+                    <td class="px-6 py-4 text-center">
+                        <span class="px-3 py-1 rounded-lg text-xs font-bold ${signalStyle}">${signalText}</span>
+                    </td>
+                    
+                    <td class="px-6 py-4">
+                        <p class="text-sm text-slate-600 italic leading-relaxed line-clamp-2" title="${item.ai_reasoning || ''}">
+                            "${item.ai_reasoning || 'Đang theo dõi'}"
+                        </p>
+                    </td>
+                    
+                    <td class="px-6 py-4 text-center">
+                        ${item.chart_url ?
+                        `<button onclick="showChart('${chartUrl}', '${item.symbol} - Analysis')" class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors border border-indigo-100">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                        </button>` :
+                        `<span class="text-slate-300 pointer-events-none opacity-50"><svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg></span>`
+                    }
+                    </td>
+                </tr>
                 `;
             }).join('');
+
+            document.getElementById('scan-time').textContent = `Cập nhật: ${new Date().toLocaleTimeString('vi-VN')}`;
         }
 
-        // --- CHART MODAL LOGIC ---
+        // Modal Logic
         function showChart(url, title) {
             const modal = document.getElementById('chart-modal');
             const img = document.getElementById('modal-chart-img');
-            const titleEl = document.getElementById('modal-title');
-            const loader = document.getElementById('chart-loading');
-
-            titleEl.textContent = title;
+            const tit = document.getElementById('modal-title');
+            tit.textContent = title;
             img.src = url;
-            img.classList.add('hidden');
-            loader.classList.remove('hidden');
-
             modal.classList.remove('hidden');
         }
-
         function closeChartModal() {
-            const modal = document.getElementById('chart-modal');
-            modal.classList.add('hidden');
-            document.getElementById('modal-chart-img').src = '';
+            document.getElementById('chart-modal').classList.add('hidden');
         }
 
-        // Auto refresh every 30 seconds if WS fails
-        setInterval(fetchData, 30000);
+        // Methodology Modal
+        function toggleMethodology() {
+            document.getElementById('methodology-modal').classList.toggle('hidden');
+        }
+
+        // Score Detail Modal
+        let stockDataCache = {};
+
+        function showScoreDetail(symbol) {
+            const item = stockDataCache[symbol];
+            if (!item) return;
+
+            document.getElementById('detail-modal-title').textContent = `📊 Chi Tiết Điểm: ${symbol}`;
+
+            const fa = item.fa_detail || {};
+            const ta = item.ta_detail || {};
+
+            const renderRow = (name, obj) => {
+                if (!obj || !obj.max) return '';
+                const pct = (obj.score / obj.max * 100).toFixed(0);
+                const color = obj.score === obj.max ? 'bg-green-500' : obj.score > 0 ? 'bg-amber-400' : 'bg-slate-200';
+                return `
+                    <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                        <div class="text-sm text-slate-700">${name}</div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-24 bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full ${color}" style="width:${pct}%"></div></div>
+                            <span class="text-sm font-mono font-bold ${obj.score > 0 ? 'text-green-600' : 'text-slate-400'}">${obj.score}/${obj.max}</span>
+                        </div>
+                    </div>
+                    <div class="text-xs text-slate-400 mb-2">${obj.desc || ''}</div>
+                `;
+            };
+
+            const html = `
+                <div class="mb-4 p-4 rounded-lg ${item.total_score >= 80 ? 'bg-green-50 border border-green-200' : item.total_score >= 60 ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50 border border-slate-200'}">
+                    <div class="text-center">
+                        <div class="text-4xl font-black ${item.total_score >= 80 ? 'text-green-600' : item.total_score >= 60 ? 'text-amber-600' : 'text-slate-500'}">${item.total_score}/100</div>
+                        <div class="text-sm font-bold mt-1">${item.signal}</div>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 rounded-lg p-3 mb-3">
+                    <div class="font-bold text-blue-800 mb-2">🏢 Phân Tích Cơ Bản (FA): ${item.score_fa || 0}/40</div>
+                    ${renderRow('Định giá (P/E)', fa.valuation)}
+                    ${renderRow('Tăng trưởng', fa.growth)}
+                    ${renderRow('Biên lợi nhuận', fa.margin)}
+                    ${renderRow('Sức khỏe tài chính', fa.health)}
+                </div>
+                
+                <div class="bg-purple-50 rounded-lg p-3">
+                    <div class="font-bold text-purple-800 mb-2">📉 Phân Tích Kỹ Thuật (TA): ${item.score_ta || 0}/60</div>
+                    ${renderRow('Xu hướng (Ichimoku)', ta.trend)}
+                    ${renderRow('Động lực (MACD)', ta.momentum)}
+                    ${renderRow('RSI', ta.rsi)}
+                    ${renderRow('Khối lượng (VSA)', ta.volume)}
+                </div>
+                
+                <div class="mt-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-600 italic">
+                    <strong>Lý do:</strong> ${item.ai_reasoning || 'Đang phân tích...'}
+                </div>
+            `;
+
+            document.getElementById('detail-modal-content').innerHTML = html;
+            document.getElementById('score-detail-modal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('score-detail-modal').classList.add('hidden');
+        }
     </script>
 </body>
 
